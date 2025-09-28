@@ -16,7 +16,7 @@ def create_app():
     CORS(app)
 
     # Config
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = 'super-secret-key'
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
@@ -28,9 +28,7 @@ def create_app():
     db.init_app(app)
     jwt = JWTManager(app)
 
-    # Create tables
-    with app.app_context():
-        db.create_all()
+    
 
     # ------------------ ROUTES ------------------
 
