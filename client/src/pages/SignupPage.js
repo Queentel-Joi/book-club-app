@@ -4,7 +4,7 @@ import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import "./AuthPage.css";
 
-const API_BASE_URL = "https://book-club-project.onrender.com"; // ✅ match Flask backend
+const API_BASE_URL = "https://book-club-app-ix0p.onrender.com";
 
 function Signup() {
   const [error, setError] = useState("");
