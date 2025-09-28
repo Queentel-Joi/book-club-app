@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://book-club-project.onrender.com";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://book-club-app-ix0p.onrender.com";
 
 export async function fetchBooks() {
   try {
