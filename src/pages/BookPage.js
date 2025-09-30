@@ -67,7 +67,7 @@ function Books() {
     if (response.ok) {
       fetchBooks();
     } else {
-      alert('Failed to delete book');
+      alert('delete book');
     }
   };
 
