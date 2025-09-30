@@ -99,7 +99,7 @@ def create_app():
     @jwt_required()
     def get_books():
         books = Book.query.all()
-        return jsonify([b.to_dict() for b in books]), 200
+        return jsonify([b.to_dict(include_relationships=True) for b in books]), 200
 
     @app.route('/books', methods=['POST'])
     @jwt_required()
@@ -115,7 +115,7 @@ def create_app():
         )
         db.session.add(book)
         db.session.commit()
-        return jsonify(book.to_dict()), 201
+        return jsonify(book.to_dict(include_relationships=True)), 201
 
     @app.route('/books/<int:book_id>', methods=['PATCH'])
     @jwt_required()
@@ -130,7 +130,7 @@ def create_app():
         book.year_published = data.get('year_published', book.year_published)
         book.description = data.get('description', book.description)
         db.session.commit()
-        return jsonify(book.to_dict()), 200
+        return jsonify(book.to_dict(include_relationships=True)), 200
 
     @app.route('/books/<int:book_id>', methods=['DELETE'])
     @jwt_required()
@@ -148,7 +148,7 @@ def create_app():
     @jwt_required()
     def get_reviews():
         reviews = Review.query.all()
-        return jsonify([r.to_dict() for r in reviews]), 200
+        return jsonify([r.to_dict(include_relationships=True) for r in reviews]), 200
 
     @app.route('/reviews', methods=['POST'])
     @jwt_required()
@@ -163,7 +163,7 @@ def create_app():
         )
         db.session.add(review)
         db.session.commit()
-        return jsonify(review.to_dict()), 201
+        return jsonify(review.to_dict(include_relationships=True)), 201
 
     @app.route('/reviews/<int:review_id>', methods=['PATCH'])
     @jwt_required()
@@ -176,7 +176,7 @@ def create_app():
         review.rating = data.get('rating', review.rating)
         review.comment = data.get('comment', review.comment)
         db.session.commit()
-        return jsonify(review.to_dict()), 200
+        return jsonify(review.to_dict(include_relationships=True)), 200
 
     @app.route('/reviews/<int:review_id>', methods=['DELETE'])
     @jwt_required()
@@ -194,7 +194,6 @@ def create_app():
     def health_check():
         return jsonify({"status": "healthy", "message": "Server is running"}), 200
 
-    # ✅ Auto-create tables on first run
     with app.app_context():
         db.create_all()
 
