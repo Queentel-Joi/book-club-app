@@ -55,7 +55,8 @@ class Book(db.Model):
             "user_id": self.user_id,
         }
         if include_relationships:
-            data["reviews"] = [review.to_dict() for review in self.reviews]
+            data["reviews"] = [review.to_dict(include_relationships=True) for review in self.reviews]
+            data["user"] = self.user.to_dict()
         return data
 
 
@@ -68,11 +69,17 @@ class Review(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     book_id = db.Column(db.Integer, db.ForeignKey("books.id"), nullable=False)
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_relationships=False):
+        data = {
             "id": self.id,
             "rating": self.rating,
             "comment": self.comment,
             "user_id": self.user_id,
             "book_id": self.book_id,
         }
+        if include_relationships:
+            if self.user:
+                data["user"] = self.user.to_dict()
+            if self.book:
+                data["book"] = {"id": self.book.id, "title": self.book.title}
+        return data
