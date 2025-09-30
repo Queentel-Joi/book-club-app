@@ -1,43 +1,57 @@
+import os
+from datetime import timedelta
+
 from flask import Flask, jsonify, request
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import (
+    JWTManager, create_access_token,
+    jwt_required, get_jwt_identity, create_refresh_token
+)
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import timedelta
 from flask_migrate import Migrate
-import os
-
-
 
 # Import db and models
 from models import db, User, Book, Review
 
+
 def create_app():
     app = Flask(__name__)
-    CORS(app)
 
-    # Config
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+    # --- Database Config ---
+    uri = os.getenv("DATABASE_URL")
+    if uri and uri.startswith("postgres://"):
+        uri = uri.replace("postgres://", "postgresql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['JWT_SECRET_KEY'] = 'super-secret-key'
+
+    # --- JWT Config ---
+    app.config['JWT_SECRET_KEY'] = os.getenv("JWT_SECRET_KEY", "super-secret-key")
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 
-    # Migration
-    migrate = Migrate(app, db)
-
-    # Init extensions
+    # --- Initialize Extensions ---
     db.init_app(app)
-    jwt = JWTManager(app)
+    Migrate(app, db)
+    JWTManager(app)
 
-    
+    # --- CORS Config ---
+    CORS(app, supports_credentials=True, origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://your-frontend.onrender.com",  # Replace with your frontend domain
+    ])
 
     # ------------------ ROUTES ------------------
 
+    # ---- AUTH ----
     @app.route('/signup', methods=['POST'])
     def signup():
         data = request.json
         username = data.get('username')
         email = data.get('email')
         password = data.get('password')
+
+        if not username or not email or not password:
+            return jsonify({"error": "Missing required fields"}), 400
 
         if User.query.filter_by(username=username).first():
             return jsonify({"error": "Username already exists"}), 400
@@ -48,9 +62,11 @@ def create_app():
         db.session.commit()
 
         token = create_access_token(identity=user.id)
+        refresh = create_refresh_token(identity=user.id)
         return jsonify({
             "access_token": token,
-            "user": {"id": user.id, "username": user.username, "email": user.email}
+            "refresh_token": refresh,
+            "user": user.to_dict()
         }), 201
 
     @app.route('/login', methods=['POST'])
@@ -64,32 +80,26 @@ def create_app():
             return jsonify({"error": "Invalid credentials"}), 401
 
         token = create_access_token(identity=user.id)
+        refresh = create_refresh_token(identity=user.id)
         return jsonify({
             "access_token": token,
-            "user": {"id": user.id, "username": user.username, "email": user.email}
+            "refresh_token": refresh,
+            "user": user.to_dict()
         }), 200
 
-    # ----------- BOOK ROUTES ------------
+    @app.route("/refresh", methods=["POST"])
+    @jwt_required(refresh=True)
+    def refresh():
+        user_id = get_jwt_identity()
+        new_token = create_access_token(identity=user_id)
+        return jsonify(access_token=new_token), 200
 
+    # ---- BOOKS ----
     @app.route('/books', methods=['GET'])
     @jwt_required()
     def get_books():
         books = Book.query.all()
-        result = []
-        for b in books:
-            result.append({
-                "id": b.id,
-                "title": b.title,
-                "author": b.author,
-                "year_published": b.year_published,
-                "description": b.description,
-                "user": {
-                    "id": b.user.id,
-                    "username": b.user.username,
-                    "email": b.user.email
-                } if b.user else None
-            })
-        return jsonify(result), 200
+        return jsonify([b.to_dict() for b in books]), 200
 
     @app.route('/books', methods=['POST'])
     @jwt_required()
@@ -105,7 +115,7 @@ def create_app():
         )
         db.session.add(book)
         db.session.commit()
-        return jsonify({"msg": "Book added"}), 201
+        return jsonify(book.to_dict()), 201
 
     @app.route('/books/<int:book_id>', methods=['PATCH'])
     @jwt_required()
@@ -120,7 +130,7 @@ def create_app():
         book.year_published = data.get('year_published', book.year_published)
         book.description = data.get('description', book.description)
         db.session.commit()
-        return jsonify({"msg": "Book updated"}), 200
+        return jsonify(book.to_dict()), 200
 
     @app.route('/books/<int:book_id>', methods=['DELETE'])
     @jwt_required()
@@ -133,26 +143,12 @@ def create_app():
         db.session.commit()
         return jsonify({"msg": "Book deleted"}), 200
 
-    # ----------- REVIEW ROUTES ------------
-
+    # ---- REVIEWS ----
     @app.route('/reviews', methods=['GET'])
     @jwt_required()
     def get_reviews():
         reviews = Review.query.all()
-        result = []
-        for r in reviews:
-            result.append({
-                "id": r.id,
-                "rating": r.rating,
-                "comment": r.comment,
-                "book_id": r.book_id,
-                "user": {
-                    "id": r.user.id,
-                    "username": r.user.username,
-                    "email": r.user.email
-                } if r.user else None
-            })
-        return jsonify(result), 200
+        return jsonify([r.to_dict() for r in reviews]), 200
 
     @app.route('/reviews', methods=['POST'])
     @jwt_required()
@@ -167,7 +163,7 @@ def create_app():
         )
         db.session.add(review)
         db.session.commit()
-        return jsonify({"msg": "Review added"}), 201
+        return jsonify(review.to_dict()), 201
 
     @app.route('/reviews/<int:review_id>', methods=['PATCH'])
     @jwt_required()
@@ -180,7 +176,7 @@ def create_app():
         review.rating = data.get('rating', review.rating)
         review.comment = data.get('comment', review.comment)
         db.session.commit()
-        return jsonify({"msg": "Review updated"}), 200
+        return jsonify(review.to_dict()), 200
 
     @app.route('/reviews/<int:review_id>', methods=['DELETE'])
     @jwt_required()
@@ -193,11 +189,15 @@ def create_app():
         db.session.commit()
         return jsonify({"msg": "Review deleted"}), 200
 
+    # ---- HEALTH CHECK ----
+    @app.route('/health')
+    def health_check():
+        return jsonify({"status": "healthy", "message": "Server is running"}), 200
+
     return app
 
 
 app = create_app()
-# --- Run server ---
+
 if __name__ == '__main__':
-    
     app.run(debug=True, port=5000)
