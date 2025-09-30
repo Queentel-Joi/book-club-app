@@ -10,12 +10,28 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate
 
+import os
+
+
+
 # Import db and models
 from models import db, User, Book, Review
+
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
+
+# Import db and models
+from models import db, User, Book, Review
+from config import Config
 
 
 def create_app():
     app = Flask(__name__)
+    CORS(app)
+
 
     # --- Database Config ---
     uri = os.getenv("DATABASE_URL")
@@ -28,19 +44,21 @@ def create_app():
     app.config['JWT_SECRET_KEY'] = os.getenv("JWT_SECRET_KEY", "super-secret-key")
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 
-    # --- Initialize Extensions ---
+    # Load config from config.py
+    app.config.from_object(Config)
+
+    # Migration
+    migrate = Migrate(app, db)
+
+    # Init extensions
     db.init_app(app)
     Migrate(app, db)
     JWTManager(app)
 
-    # --- CORS Config ---
-    CORS(app, supports_credentials=True, origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://your-frontend.onrender.com",  # Replace with your frontend domain
-    ])
 
-    # ------------------ ROUTES ------------------
+    
+
+
 
     # ---- AUTH ----
     @app.route('/signup', methods=['POST'])
@@ -198,6 +216,5 @@ def create_app():
 
 
 app = create_app()
-
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
