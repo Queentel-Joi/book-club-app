@@ -43,7 +43,7 @@ Pygments==2.19.2
 PyJWT==2.9.0
 pytz==2025.2
 python-dotenv==1.0.1
-setuptools==80.9.0
+setuptools==65.0
 six==1.17.0
 SQLAlchemy==2.0.43
 SQLAlchemy-serializer==1.4.12
