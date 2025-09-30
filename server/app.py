@@ -4,6 +4,7 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import timedelta
 from flask_migrate import Migrate
+
 import os
 
 
@@ -11,15 +12,30 @@ import os
 # Import db and models
 from models import db, User, Book, Review
 
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
+
+# Import db and models
+from models import db, User, Book, Review
+from config import Config
+
+
 def create_app():
     app = Flask(__name__)
     CORS(app)
+
 
     # Config
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = 'super-secret-key'
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+
+    # Load config from config.py
+    app.config.from_object(Config)
 
     # Migration
     migrate = Migrate(app, db)
@@ -28,9 +44,11 @@ def create_app():
     db.init_app(app)
     jwt = JWTManager(app)
 
+
     
 
-    # ------------------ ROUTES ------------------
+
+ ------------------ ROUTES ------------------
 
     @app.route('/signup', methods=['POST'])
     def signup():
@@ -197,7 +215,5 @@ def create_app():
 
 
 app = create_app()
-# --- Run server ---
 if __name__ == '__main__':
-    
     app.run(debug=True, port=5000)
