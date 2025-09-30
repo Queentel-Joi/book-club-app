@@ -194,6 +194,10 @@ def create_app():
     def health_check():
         return jsonify({"status": "healthy", "message": "Server is running"}), 200
 
+    # ✅ Auto-create tables on first run
+    with app.app_context():
+        db.create_all()
+
     return app
 
 
